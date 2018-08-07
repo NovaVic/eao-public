@@ -9,7 +9,7 @@ import 'rxjs/add/operator/map';
 import 'rxjs/add/operator/switchMap';
 import 'rxjs/add/observable/throw';
 import 'rxjs/add/observable/forkJoin';
-import 'rxjs/add/observable/concat';
+import 'rxjs/add/observable/merge';
 
 import { Api } from './api';
 import { ValuedComponent } from '../models/vcs';
@@ -128,7 +128,7 @@ export class CommentPeriodService {
       .getPublishedCommentsByPCPCode(id)
       .map((res: Response) => res.json())
       .flatMap((pcpComments: Array<any>) => {
-        return Observable.concat(
+        return Observable.merge(
           pcpComments.map(comment => {
             comment = new Comment(comment);
             this.pcp.vcs = this.pcp.vcs.concat(comment.vcs);
