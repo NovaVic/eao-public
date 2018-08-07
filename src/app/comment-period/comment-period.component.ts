@@ -90,7 +90,6 @@ export class CommentPeriodComponent implements OnInit {
   }
 
   calculateDateRange() {
-
     let dayDiff;
 
     if (this.commentPeriod.dateCompleted && this.commentPeriod.dateStarted) {
