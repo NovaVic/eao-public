@@ -5,11 +5,12 @@ import { Comment } from '../models/comment';
 import { Document } from '../models/document';
 import { Project } from '../models/project';
 import { Observable } from 'rxjs/Observable';
+import { catchError } from 'rxjs/operators';
 import 'rxjs/add/operator/map';
 import 'rxjs/add/operator/switchMap';
 import 'rxjs/add/observable/throw';
 import 'rxjs/add/observable/forkJoin';
-import 'rxjs/add/observable/merge';
+import 'rxjs/add/observable/of';
 
 import { Api } from './api';
 import { ValuedComponent } from '../models/vcs';
@@ -121,33 +122,46 @@ export class CommentPeriodService {
       .map(() => this.pcp);
   }
 
-  // get all comments associated with public comment period and map to comments attribute
-  // return array of comment json objects
+  /**
+   * Fetches all comments associated with the public comment period.
+   * For each comment, fetch all documents associated with the comment and create a link that redirects to the documents content.
+   * Also builds a list of unique valued components.
+   */
   private getCommentsByPCP(id) {
-    return this.api
-      .getPublishedCommentsByPCPCode(id)
+    return this.api.getPublishedCommentsByPCPCode(id)
       .map((res: Response) => res.json())
       .flatMap((pcpComments: Array<any>) => {
-        return Observable.merge(
+        // for each comment
+        return Observable.forkJoin(
           pcpComments.map(comment => {
             comment = new Comment(comment);
             this.pcp.vcs = this.pcp.vcs.concat(comment.vcs);
             this.pcp.comments.push(comment);
-            return Observable.forkJoin(
-              comment.documents.map(doc => {
-                return this.api.getDocumentById(doc.id)
-                  .map((res: Response) => res.json())
-                  .subscribe(trueDoc => {
-                    doc.displayName = trueDoc.internalOriginalName;
-                    doc.link = `${this.api.hostnameEPIC}/api/document/${doc.id}/fetch`;
-                    return trueDoc;
-                  });
-              })
-            );
+            if (comment.documents.length > 0) {
+              // for each comment document
+              return Observable.forkJoin(
+                comment.documents.map(doc =>
+                  this.api.getDocumentById(doc.id)
+                    .map((res: Response) => res.json())
+                    .map(trueDoc => {
+                      doc.displayName = trueDoc.internalOriginalName;
+                      doc.link = `${this.api.hostnameEPIC}/api/document/${doc.id}/fetch`;
+                      return doc;
+                    })
+                    .pipe(catchError(error => Observable.of(error)))
+                )
+              )
+              .pipe(catchError(error => Observable.of(error)));
+            } else {
+              // comment has no documents
+              return Observable.of(comment);
+            }
           })
         )
-        .map(() => this.pcp.vcs = this.pcp.vcs.filter((vc, index) => this.pcp.vcs.indexOf(vc) === index));
-      });
+        .pipe(catchError(error => Observable.of(error)));
+      })
+      // ensure the list of valued components has only unique values
+      .map(() => this.pcp.vcs = this.pcp.vcs.filter((vc, index) => this.pcp.vcs.indexOf(vc) === index));
   }
 
   // get all valued components associated with a comment and map it to vcs attribute
