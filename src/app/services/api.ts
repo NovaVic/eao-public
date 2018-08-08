@@ -73,9 +73,9 @@ export class Api {
     return this.put(`vclist`, vcsCodes);
   }
 
-  submitDocument(projectId: number, projectCode: string, file: File, fileData: any, options: Object) {
+  submitDocument(projectId: number, projectCode: string, commentPeriodId: number, file: File, fileData: any, options: Object) {
     // TODO add error handling?
-    return this.get(`getMinioPresignedPUTUrl/${projectCode}/${file.name}`)
+    return this.get(`getMinioCommentAttachmentUploadUrl/${projectCode}/${commentPeriodId}/${file.name}`)
       .map(response => response.json())
       .switchMap(preSignedUrl => {
         return this.http.put(preSignedUrl, file);

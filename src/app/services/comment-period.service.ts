@@ -23,7 +23,9 @@ export class CommentPeriodService {
   constructor(private api: Api) {}
 
   // submit a comment
-  submitComment(projectId: number, projectCode: string, documents: Array<File>, comment: Object, options: Object ): Observable<any> {
+  submitComment(projectId: number, projectCode: string, commentPeriodId: number, documents: Array<File>,
+    comment: Object, options: Object): Observable<any> {
+
     this.comment = comment;
 
     if (documents.length === 0) {
@@ -31,7 +33,7 @@ export class CommentPeriodService {
       return this.submitCommentNoDocument(projectId, options);
     } else {
       // if document
-      return this.submitCommentWithDocuments(projectId, projectCode, documents, options);
+      return this.submitCommentWithDocuments(projectId, projectCode, commentPeriodId, documents, options);
     }
   }
 
@@ -41,9 +43,9 @@ export class CommentPeriodService {
   }
 
   // if document attached
-  submitCommentWithDocuments(projectId, projectCode, documents, options) {
+  submitCommentWithDocuments(projectId: number, projectCode: string, commentPeriodId: number, documents: Array<File>, options: Object) {
     // submit documents first
-    return (this.submitDocuments(projectId, projectCode, documents, options)
+    return (this.submitDocuments(projectId, projectCode, commentPeriodId, documents, options)
       .map((docs: any) => {
         if (!docs) {
           return Observable.throw(new Error('Documents not submitted!'));
@@ -68,7 +70,7 @@ export class CommentPeriodService {
       });
   }
 
-  submitDocuments(projectId, projectCode, documents, options) {
+  submitDocuments(projectId: number, projectCode: string, commentPeriodId: number, documents: Array<File>, options: Object) {
     const observablesArray = documents.map((file: File) => {
       const requestBody = {
         file: {
@@ -82,7 +84,7 @@ export class CommentPeriodService {
         }
       };
       return this.api
-        .submitDocument(projectId, projectCode, file, requestBody, options)
+        .submitDocument(projectId, projectCode, commentPeriodId, file, requestBody, options)
         .map((res: Response) => {
           return res.json();
         });

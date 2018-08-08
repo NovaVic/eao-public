@@ -149,7 +149,7 @@ export class SubmitCommentModalComponent implements OnInit {
 
       const options = new RequestOptions();
 
-      this.commentPeriodService.submitComment(projectId, projectCode, documents, commentForm, options).subscribe(
+      this.commentPeriodService.submitComment(projectId, projectCode, commentPeriodId, documents, commentForm, options).subscribe(
         data => {
           this.loading = false;
           htmlForm.reset();
