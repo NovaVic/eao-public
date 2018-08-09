@@ -20,20 +20,18 @@ export class CommentPeriodService {
   pcp: CommentPeriod;
   comment: Object;
 
-  constructor(private api: Api) {}
+  constructor(private api: Api) { }
 
   // submit a comment
-  submitComment(projectId: number, projectCode: string, commentPeriodId: number, documents: Array<File>,
-    comment: Object, options: Object): Observable<any> {
-
+  submitComment(projectId: number, documents: Array<any>, comment: Object, options: Object): Observable<any> {
     this.comment = comment;
 
+    // if no documents
     if (documents.length === 0) {
-      // if no documents
       return this.submitCommentNoDocument(projectId, options);
+    // if document
     } else {
-      // if document
-      return this.submitCommentWithDocuments(projectId, projectCode, commentPeriodId, documents, options);
+      return this.submitCommentWithDocuments(projectId, documents, options);
     }
   }
 
@@ -43,9 +41,9 @@ export class CommentPeriodService {
   }
 
   // if document attached
-  submitCommentWithDocuments(projectId: number, projectCode: string, commentPeriodId: number, documents: Array<File>, options: Object) {
+  submitCommentWithDocuments(projectId, documents, options) {
     // submit documents first
-    return (this.submitDocuments(projectId, projectCode, commentPeriodId, documents, options)
+    return this.submitDocuments(projectId, documents, options)
       .map((docs: any) => {
         if (!docs) {
           return Observable.throw(new Error('Documents not submitted!'));
@@ -58,8 +56,7 @@ export class CommentPeriodService {
         return this.comment;
       })
       // submit comment details
-      .switchMap(() => this.submitCommentDetails(options))
-    );
+      .switchMap(() => this.submitCommentDetails(options));
   }
 
   // submit comment details
@@ -70,21 +67,9 @@ export class CommentPeriodService {
       });
   }
 
-  submitDocuments(projectId: number, projectCode: string, commentPeriodId: number, documents: Array<File>, options: Object) {
-    const observablesArray = documents.map((file: File) => {
-      const requestBody = {
-        file: {
-          // only the file metadata is needed, not the file content.
-          originalname: file.name,
-          name: file.name,
-          mimetype: file.type,
-          extension: file.name.match(/\.([0-9a-z]+$)/i)[1],
-          size: file.size,
-          path: projectCode + '/' + file.name
-        }
-      };
-      return this.api
-        .submitDocument(projectId, projectCode, commentPeriodId, file, requestBody, options)
+  submitDocuments(projectId, documents, options) {
+    const observablesArray = documents.map((document) => {
+      return this.api.submitDocument(projectId, document, options)
         .map((res: Response) => {
           return res.json();
         });
@@ -94,26 +79,24 @@ export class CommentPeriodService {
 
   // return a public comment period object
   getByCode(id: string, code: string): Observable<CommentPeriod> {
-    // Grab the project data first
-    return (
-      this.api.getPCPByCode(id)
-        .map((res: Response) => res.json())
-        .map((pcp: any) => {
-          if (!pcp) {
-            throw new Error('PCP not found');
-          }
-          this.pcp = new CommentPeriod(pcp);
-          this.pcp.relatedDocuments.forEach((document, index) => {
-            document = new Document(document);
-            this.processDocuments(this.pcp.relatedDocuments, document, index);
-          });
-          this.setStatus(new Date(this.pcp.dateStarted), new Date(this.pcp.dateCompleted));
-          return this.pcp;
-        })
-        // get what project the public comment period is associated with
-        .switchMap(() => this.getProjectByCode(code))
-        .map(() => this.pcp)
-    );
+  // Grab the project data first
+    return this.api.getPCPByCode(id)
+      .map((res: Response) => res.json())
+      .map((pcp: any) => {
+        if (!pcp) {
+          throw new Error('PCP not found');
+        }
+        this.pcp = new CommentPeriod(pcp);
+        this.pcp.relatedDocuments.forEach((document, index ) => {
+          document = new Document(document);
+          this.processDocuments(this.pcp.relatedDocuments, document, index);
+        });
+        this.setStatus(new Date(this.pcp.dateStarted), new Date(this.pcp.dateCompleted));
+        return this.pcp;
+      })
+      // get what project the public comment period is associated with
+      .switchMap(() => this.getProjectByCode(code))
+      .map(() => this.pcp);
   }
 
   // attach comments and documents to pcp object
@@ -166,23 +149,18 @@ export class CommentPeriodService {
       .map(() => this.pcp.vcs = this.pcp.vcs.filter((vc, index) => this.pcp.vcs.indexOf(vc) === index));
   }
 
-  // get all valued components associated with a comment and map it to vcs attribute
+    // get all valued components associated with a comment and map it to vcs attribute
   // return array of valued components json objects
   private getCommentVcs() {
-    return this.api
-      .getValuedComponentsByCode(this.pcp.vcs)
+    return this.api.getValuedComponentsByCode(this.pcp.vcs)
       .map((res: Response) => res.json())
-      .map(vcs => {
+      .map((vcs) => {
         this.pcp.comments.forEach(comment => {
           this.pcp.vcs.filter(vc => {
             if (comment.vcs.indexOf(vc) !== -1) {
               vcs.filter(obj => {
                 if (obj._id === vc) {
-                  this.processVcs(
-                    comment.vcs,
-                    new ValuedComponent(obj),
-                    comment.vcs.indexOf(vc)
-                  );
+                  this.processVcs(comment.vcs, new ValuedComponent(obj), comment.vcs.indexOf(vc));
                 }
               });
             }
@@ -198,8 +176,7 @@ export class CommentPeriodService {
       .map((res: Response) => {
         this.pcp.project = new Project(res.json());
         return this.pcp;
-      }
-    );
+      });
   }
 
   private processVcs(vcs: Array<ValuedComponent>, vc: ValuedComponent, index: number) {
@@ -214,9 +191,9 @@ export class CommentPeriodService {
     const curr = new Date();
     const weekAgo = new Date(start.getDate() - 7);
     // a public comment period is in a pending state when the date is a week before it opens
-    if (curr < start && curr >= weekAgo) {
+    if ( curr < start && curr >= weekAgo ) {
       this.pcp.status = 'Pending';
-    } else if (curr > end) {
+    } else if ( curr > end ) {
       this.pcp.status = 'Closed';
     } else {
       this.pcp.status = 'Open';

@@ -73,16 +73,8 @@ export class Api {
     return this.put(`vclist`, vcsCodes);
   }
 
-  submitDocument(projectId: number, projectCode: string, commentPeriodId: number, file: File, fileData: any, options: Object) {
-    // TODO add error handling?
-    return this.get(`getMinioCommentAttachmentUploadUrl/${projectCode}/${commentPeriodId}/${file.name}`)
-      .map(response => response.json())
-      .switchMap(preSignedUrl => {
-        return this.http.put(preSignedUrl, file);
-      })
-      .switchMap(() => {
-        return this.post(`commentdocument/${projectId}/upload`, fileData, options);
-      });
+  submitDocument(projectId: number, form: FormData, options: Object) {
+    return this.post(`commentdocument/${projectId}/upload`, form, options);
   }
 
   submitComment(comment, options) {

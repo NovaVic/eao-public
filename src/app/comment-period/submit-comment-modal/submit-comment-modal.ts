@@ -129,7 +129,6 @@ export class SubmitCommentModalComponent implements OnInit {
     const htmlForm = <HTMLFormElement>document.getElementById('submitCommentForm');
     const commentPeriodId = this.commentPeriodComponent.commentPeriod._id;
     const projectId = this.commentPeriodComponent.commentPeriod.project._id;
-    const projectCode = this.commentPeriodComponent.commentPeriod.project.code;
     const commentForm = {
       userCan: {},
       period: commentPeriodId,
@@ -142,14 +141,16 @@ export class SubmitCommentModalComponent implements OnInit {
 
     if (this.validateFields(form)) {
       this.loading = true;
-      const documents = [];
-      this.files.forEach((file: File) => {
-        documents.push(file);
+      const documentsForms = [];
+      this.files.forEach((doc, index) => {
+        const document = new FormData();
+        document.append('file', doc, doc.name);
+        documentsForms.push(document);
       });
 
       const options = new RequestOptions();
 
-      this.commentPeriodService.submitComment(projectId, projectCode, commentPeriodId, documents, commentForm, options).subscribe(
+      this.commentPeriodService.submitComment(projectId, documentsForms, commentForm, options).subscribe(
         data => {
           this.loading = false;
           htmlForm.reset();
